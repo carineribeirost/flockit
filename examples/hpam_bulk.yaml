@@ -1,0 +1,18 @@
+# HPAM (partially hydrolyzed polyacrylamide) in 0.1 M NaCl, without a surface.
+# Usage:  flockit build examples/hpam_bulk.yaml
+output: hpam_bulk
+seed: 7
+
+polymer:
+  dp: 20
+  composition: {AM: 0.7, AA: 0.3}   # 30% hydrolysis -> charge -6
+  tacticity: atactic
+
+solvent:
+  padding: 12.0
+  salt: {NaCl: 0.1}
+
+protocol:
+  temperature: 300.0
+  npt: {ps: 500.0, max_extensions: 4}
+  production: {ps: 5000.0, dump_every_ps: 2.0}

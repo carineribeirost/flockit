@@ -1,0 +1,23 @@
+# "real" units: mass in g/mol, charge in e, epsilon in kcal/mol, distance in A.
+
+# SPC/E: Berendsen, Grigera and Straatsma, J. Phys. Chem. 91, 6269 (1987).
+# Rigid geometry via SHAKE; the force constants only act during minimization.
+water:
+  spce:
+    OW: {mass: 15.9994, charge: -0.8476, epsilon: 0.1553, sigma: 3.166}
+    HW: {mass: 1.008, charge: 0.4238, epsilon: 0.0, sigma: 0.0}
+    bond: {k: 1000.0, r0: 1.0}
+    angle: {k: 100.0, theta0: 109.47}
+
+# Monovalent ions from Joung and Cheatham, J. Phys. Chem. B 112, 9020 (2008),
+# set fitted for SPC/E. They were derived with the Lorentz-Berthelot rule, so
+# every pair involving an ion uses arithmetic mixing (all others: geometric).
+ions:
+  Na: {mass: 22.98977, charge: 1.0, epsilon: 0.3526418, rmin_half: 1.212}
+  Cl: {mass: 35.453, charge: -1.0, epsilon: 0.0127850, rmin_half: 2.711}
+
+# Generic model surface: frozen sites with SPC/E oxygen LJ (hydrophilic
+# surface). The charge is spread uniformly over the sites of each face. This is
+# a model, not a mineral: replace it with ClayFF etc. when needed.
+surface:
+  SW: {mass: 15.9994, epsilon: 0.1553, sigma: 3.166}

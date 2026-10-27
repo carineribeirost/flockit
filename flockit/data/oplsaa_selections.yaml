@@ -1,0 +1,43 @@
+# Explicit choice among OPLS-AA 2024 variants when the same class pattern has
+# more than one parameter set (suffix "__n" in moltemplate).
+#
+# Each rule matches by atom types (opls numbers) in the orientation of the
+# class pattern; "*" matches any type. The most specific rule (fewest "*") wins.
+# Without an applicable rule the builder stops and lists the available
+# variants: a variant is never chosen silently.
+#
+# When adding a new monomer, run `flockit build` and add the rules it asks
+# for here, together with the model compound that justifies each choice.
+
+dihedrals:
+  - classes: CT_CT_CT_CT
+    types: ["*", "*", "*", "*"]
+    variant: 1
+    reason: "generic hydrocarbon (OPLS/2020); variant 2 is specific to butane"
+
+  # The X-CT-CT-C pattern appears in both orientations (CT_CT_CT_C~ and C~_CT_CT_CT),
+  # with 14 variants in total; the rules below use the orientation of each key.
+  - classes: C~_CT_CT_CT
+    types: ["235", "*", "*", "*"]
+    variant: 1
+    reason: "butanamide: same C-C-C-C(=O)NH2 sequence as the polyacrylamide backbone"
+
+  - classes: CT_CT_CT_C~
+    types: ["*", "*", "*", "271"]
+    variant: 1
+    reason: "carboxylate ion, analogous to the pendant acrylate"
+
+  - classes: HC_CT_CT_C~
+    types: ["*", "*", "*", "*"]
+    variant: 0
+    reason: "'all carbonyls' (generic); the alternative C~_CT_CT_HC is specific to dicarboxylic acids"
+
+  - classes: CT_CT_C~_N~
+    types: ["*", "*", "235", "237"]
+    variant: 2
+    reason: "propanamide (OPLS-AA/M): primary amide bonded to an alkyl carbon"
+
+  - classes: CT_CT_C~_O~
+    types: ["*", "*", "235", "236"]
+    variant: 2
+    reason: "propanamide (OPLS-AA/M), same model compound as the C-C-C-N dihedral"

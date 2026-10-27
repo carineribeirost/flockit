@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+
+# Simulation outputs (regenerate with flockit build / run / analyze)
+runs/
+hpam_bulk/
+hpam_surface/
+*.lammpstrj
+*.restart
+log.lammps

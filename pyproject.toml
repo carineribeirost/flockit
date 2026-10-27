@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flockit"
+version = "0.1.0"
+description = "LAMMPS toolkit for flocculant polyelectrolytes: system building, equilibration protocol and analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "pyyaml>=6"]
+
+[project.optional-dependencies]
+run = ["lammps"]
+plot = ["matplotlib"]
+dev = ["pytest", "moltemplate"]
+
+[project.scripts]
+flockit = "flockit.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["flockit*"]
+
+[tool.setuptools.package-data]
+flockit = ["data/*.json", "data/*.yaml", "data/monomers/*.yaml"]

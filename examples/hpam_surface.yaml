@@ -1,0 +1,23 @@
+# Anionic HPAM above a positively charged model surface, in 0.1 M NaCl.
+# The slab is frozen and periodic in x,y; water is on both sides.
+# Usage:  flockit build examples/hpam_surface.yaml
+output: hpam_surface
+seed: 11
+
+polymer:
+  dp: 20
+  composition: {AM: 0.7, AA: 0.3}
+
+solvent:
+  salt: {NaCl: 0.1}
+
+surface:
+  type: model
+  charge_density: 0.3       # e/nm^2 on each face
+  size: [45.0, 45.0]        # A
+  water_thickness: 50.0     # A
+  polymer_gap: 6.0          # A between the polymer and the face, at the start
+
+protocol:
+  npt: {ps: 500.0, max_extensions: 4}
+  production: {ps: 5000.0, dump_every_ps: 2.0}

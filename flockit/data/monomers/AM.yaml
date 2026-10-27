@@ -1,0 +1,20 @@
+name: AM
+description: "acrylamide, -CH2-CH(C(=O)NH2)-"
+charge: 0
+
+# OPLS-AA types of the backbone carbons (CA = CH2, CB = CH carrying the side
+# group) and of the hydrogens bonded to them. At the chain ends CA becomes CH3
+# (head) and CB becomes CH2 (tail).
+types: {CA: 136, CB: 137, HC: 140}
+head_types: {CA: 135}
+tail_types: {CB: 136}
+
+# Side group in internal coordinates: each atom is bonded to `bond`, makes an
+# angle with `angle[0]` and a dihedral with `dihedral[0]`. "random" draws the
+# dihedral (it is re-drawn if an overlap occurs).
+side:
+  - {name: C,   type: 235, bond: CB, r: 1.522}
+  - {name: O,   type: 236, bond: C, r: 1.229, angle: [CB, 120.4], dihedral: [CA, random]}
+  - {name: N,   type: 237, bond: C, r: 1.335, angle: [CB, 116.6], dihedral: [O, 180.0]}
+  - {name: HN1, type: 240, bond: N, r: 1.010, angle: [C, 119.8], dihedral: [O, 0.0]}
+  - {name: HN2, type: 240, bond: N, r: 1.010, angle: [C, 119.8], dihedral: [O, 180.0]}

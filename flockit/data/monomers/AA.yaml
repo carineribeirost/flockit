@@ -1,0 +1,15 @@
+name: AA
+description: "acrylate (deprotonated), -CH2-CH(COO-)-; Na+ counterion"
+charge: -1
+counterion: Na
+charged_group: [C, O1, O2]
+
+# CB is the CH bonded to the carboxylate (opls_275); at the tail it becomes CH2 (opls_274).
+types: {CA: 136, CB: 275, HC: 140}
+head_types: {CA: 135}
+tail_types: {CB: 274}
+
+side:
+  - {name: C,  type: 271, bond: CB, r: 1.522}
+  - {name: O1, type: 272, bond: C, r: 1.250, angle: [CB, 117.0], dihedral: [CA, random]}
+  - {name: O2, type: 272, bond: C, r: 1.250, angle: [CB, 117.0], dihedral: [O1, 180.0]}
