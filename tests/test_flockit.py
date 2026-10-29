@@ -1,13 +1,16 @@
+from itertools import permutations
+
 import numpy as np
 import pytest
 
-from flockit import config, geometry
+from flockit import cli, config, geometry
 from flockit.analysis import segments, surface_distance
 from flockit.builder import build_system, parametrize
 from flockit.convergence import check
 from flockit.forcefield import ForceField, ParameterError
 from flockit.lammps_io import write_system
 from flockit.polymer import build_chain, find_clashes, make_sequence
+from flockit.protocol import write_input
 
 
 @pytest.fixture(scope="module")
@@ -32,8 +35,14 @@ def test_forcefield_lookups(ff):
     assert ff.dihedral("opls_235", "opls_137", "opls_136", "opls_137") == amide  # reversed order
     assert ff.dihedral("opls_137", "opls_136", "opls_275", "opls_271").comment == "carboxylate ion"
     assert ff.dihedral("opls_140", "opls_136", "opls_137", "opls_235").comment == "all carbonyls"
-    term, order = ff.improper("opls_235", "opls_137", "opls_236", "opls_237")
+    names = ("opls_235", "opls_137", "opls_236", "opls_237")
+    term, order = ff.improper(*names)
     assert term.coeffs[0] == 10.5 and order[0] == 0
+    # the atom order (out-of-plane axis) does not depend on how the neighbours are listed
+    for nb in permutations(names[1:]):
+        call = (names[0], *nb)
+        t, o = ff.improper(*call)
+        assert t == term and [call[i] for i in o] == [names[i] for i in order]
     assert ff.improper("opls_271", "opls_275", "opls_272", "opls_272") is None
     # Joung-Cheatham ions: sigma = 2 Rmin/2 / 2^(1/6)
     assert ff.atom_type("Na").sigma == pytest.approx(2.1595, abs=1e-3)
@@ -121,14 +130,63 @@ def test_surface_distance_wraps_through_bottom_face():
     assert d == pytest.approx([2.0, 8.0, 3.0, 8.0])
 
 
+def _write_obs(path, dens, rng):
+    t = np.arange(len(dens))
+    header = "# Time-averaged data for fix obs\n# TimeStep c_tmob c_pmob v_dens c_thermo_pe v_vol v_rg\n"
+    rows = np.column_stack([t, np.full(len(t), 300.0), np.zeros(len(t)), dens,
+                            -1000 + rng.normal(size=len(t)), np.ones(len(t)), np.full(len(t), 10.0)])
+    path.write_text(header + "\n".join(" ".join(map(str, r)) for r in rows))
+
+
 def test_convergence_detects_drift(tmp_path):
     rng = np.random.default_rng(0)
-    t = np.arange(200)
-    header = "# Time-averaged data for fix obs\n# TimeStep c_tmob c_pmob v_dens c_thermo_pe v_vol v_rg\n"
     for name, dens in (("flat", 1.0 + 0.002 * rng.normal(size=200)), ("drift", np.linspace(0.8, 1.0, 200))):
-        rows = np.column_stack([t, np.full(200, 300.0), np.zeros(200), dens,
-                                -1000 + rng.normal(size=200), np.ones(200), np.full(200, 10.0)])
         path = tmp_path / f"{name}.obs"
-        path.write_text(header + "\n".join(" ".join(map(str, r)) for r in rows))
+        _write_obs(path, dens, rng)
         report = check(path, ["density", "pe"], {"density": 0.005, "pe": 0.005})
         assert report.converged == (name == "flat")
+
+
+def test_check_uses_the_run_tolerances(tmp_path):
+    _write_obs(tmp_path / "03_npt.obs", np.linspace(0.8, 1.0, 200), np.random.default_rng(1))
+    with pytest.raises(SystemExit) as default_tol:
+        cli.main(["check", str(tmp_path / "03_npt.obs")])
+    assert default_tol.value.code == 2  # drifting density fails the default 0.5 %
+    config.save(config.resolve({"protocol": {"convergence": {"rel_tol": {"density": 0.5}}}}),
+                tmp_path / "flockit.yaml")
+    with pytest.raises(SystemExit) as run_tol:
+        cli.main(["check", str(tmp_path / "03_npt.obs")])
+    assert run_tol.value.code == 0
+
+
+def _built(ff, path, cfg):
+    system, chain = build_system(cfg, ff)
+    meta = write_system(path, system, chain, parametrize(system, ff), ff, cfg)
+    config.save(cfg, path / "flockit.yaml")
+    write_input(path, meta, cfg["protocol"])
+    return path
+
+
+@pytest.mark.parametrize("surface", [False, True])
+def test_npt_thermostat_uses_mobile_temperature(ff, tmp_path, surface):
+    # fix npt computes its temperature on group all: with a frozen slab it must be told to use the
+    # mobile atoms, or it heats them by dof_all / dof_mobile (to ~327 K instead of 300 K)
+    cfg = _small_cfg(charge_density=0.5, size=[30.0, 30.0], water_thickness=40.0) if surface else _small_cfg()
+    cfg["protocol"]["production"]["ensemble"] = "npt"
+    lines = (_built(ff, tmp_path, cfg) / "in.flockit").read_text().splitlines()
+    npt = [i for i, line in enumerate(lines) if line.split()[:1] == ["fix"] and " npt " in line]
+    assert len(npt) == 2  # equilibration and production
+    for i in npt:
+        assert lines[i + 1].split() == ["fix_modify", "integ", "temp", "tmob", "press", "pmob"]
+
+
+def test_protocol_override_keeps_saved_settings(ff, tmp_path):
+    cfg = _small_cfg()
+    cfg["protocol"]["temperature"] = 350.0
+    _built(ff, tmp_path, cfg)
+    override = tmp_path / "override.yaml"
+    override.write_text("protocol:\n  npt: {ps: 123.0}\n")
+    cli.main(["protocol", str(tmp_path), "--config", str(override)])
+    saved = config.load(tmp_path / "flockit.yaml")["protocol"]
+    assert saved["temperature"] == 350.0 and saved["npt"]["ps"] == 123.0 and saved["npt"]["dt"] == 2.0
+    assert "npt temp 350.0 350.0" in (tmp_path / "in.flockit").read_text()

@@ -73,9 +73,14 @@ def resolve(user: dict | None) -> dict:
     return cfg
 
 
-def load(path: str | Path) -> dict:
+def read(path: str | Path) -> dict:
+    """The YAML as written by the user, without defaults."""
     with open(path, encoding="utf-8") as fh:
-        return resolve(yaml.safe_load(fh))
+        return yaml.safe_load(fh) or {}
+
+
+def load(path: str | Path) -> dict:
+    return resolve(read(path))
 
 
 def save(cfg: dict, path: str | Path) -> None:

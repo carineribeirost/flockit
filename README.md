@@ -116,6 +116,9 @@ starts `polymer_gap` Å above it.
 1. Conjugate-gradient minimization, without SHAKE.
 2. NVT heating to T, with SHAKE on X-H bonds and water.
 3. NPT at 2 fs: isotropic without a surface; z only, with `dilate mobile`, with the frozen slab.
+   `fix npt` measures temperature over group `all`, which would count the slab's frozen sites and
+   heat the water and polymer to ~327 K; `fix_modify integ temp tmob press pmob` makes it use the
+   mobile atoms. LAMMPS then warns "Temperature for fix modify is not for group all", as intended.
 4. NVT (or NPT) production.
 
 **Convergence** (`flockit check`, applied to the NPT stage by `flockit run`): the final window of the

@@ -109,11 +109,15 @@ unfix           integ
     n = p["npt"]
     # with the frozen slab, only mobile atoms are rescaled when Lz changes
     baro = f"z {P} {P} {p['pdamp']} dilate mobile" if surface else f"iso {P} {P} {p['pdamp']}"
+    # fix npt measures temperature on group all (unlike fix nvt), so the frozen slab's zero
+    # velocities would make it heat the mobile atoms by dof_all/dof_mobile: use the mobile group
+    npt = (f"fix             integ mobile npt temp {T} {T} {p['tdamp']} {baro}\n"
+           "fix_modify      integ temp tmob press pmob")
     stages.append(Stage("npt", f"""
 # ---- 3) NPT ({'z only, frozen slab' if surface else 'isotropic'})
 timestep        {n['dt']}
 thermo          {_steps(p['observe_every_ps'], n['dt'])}
-fix             integ mobile npt temp {T} {T} {p['tdamp']} {baro}
+{npt}
 {_ave_time(p, n['dt'], '03_npt.obs')}
 """, _steps(n["ps"], n["dt"]), """unfix           obs
 unfix           integ
@@ -122,7 +126,7 @@ write_data      03_npt.data pair ij
 
     pr = p["production"]
     if pr["ensemble"] == "npt":
-        integ = f"fix             integ mobile npt temp {T} {T} {p['tdamp']} {baro}"
+        integ = npt
     elif pr["ensemble"] == "nvt":
         integ = f"fix             integ mobile nvt temp {T} {T} {p['tdamp']}"
     else:

@@ -100,11 +100,19 @@ class ForceField:
         return self._lookup("dihedral", (a, b, c, d))[0]
 
     def improper(self, center: str, n1: str, n2: str, n3: str) -> tuple[Term, tuple[int, ...]] | None:
-        """Improper term and atom order (indices 0..3, central atom first), or None."""
+        """Improper term and atom order (indices 0..3 into the arguments, central atom first), or None.
+
+        The neighbours are sorted by type before the lookup, so every copy of a group gets the
+        same atom order (the same out-of-plane axis) however its neighbours happen to be listed.
+        """
+        neighbours = (n1, n2, n3)
+        perm = sorted(range(3), key=lambda i: neighbours[i])
         try:
-            return self._lookup("improper", (center, n1, n2, n3))
+            term, order = self._lookup("improper", (center, *(neighbours[i] for i in perm)))
         except ParameterError:
             return None
+        to_args = (0, *(1 + i for i in perm))
+        return term, tuple(to_args[k] for k in order)
 
     def _lookup(self, kind: str, names: tuple[str, ...]) -> tuple[Term, tuple[int, ...]]:
         key = (kind, names)

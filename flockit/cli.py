@@ -49,7 +49,8 @@ def _cmd_protocol(args) -> None:
     from flockit.protocol import write_input
     outdir, meta, cfg = _load_dir(args.dir)
     if args.config:
-        cfg = config.deep_merge(cfg, {"protocol": config.load(args.config)["protocol"]})
+        # only the keys the override file sets; the rest keeps the system's saved protocol
+        cfg = config.deep_merge(cfg, {"protocol": config.read(args.config).get("protocol") or {}})
         config.save(cfg, outdir / "flockit.yaml")
     print(write_input(outdir, meta, cfg["protocol"]))
 
@@ -63,9 +64,12 @@ def _cmd_run(args) -> None:
 
 def _cmd_check(args) -> None:
     from flockit.convergence import check
-    conv = config.DEFAULTS["protocol"]["convergence"]
+    # the tolerances of the run the .obs file belongs to, as `flockit run` applies them
+    saved = Path(args.obs).parent / "flockit.yaml"
+    conv = (config.load(saved) if saved.exists() else config.DEFAULTS)["protocol"]["convergence"]
     obs = args.observables.split(",") if args.observables else conv["observables"]
-    report = check(args.obs, obs, conv["rel_tol"], args.window)
+    window = args.window if args.window is not None else conv["window"]
+    report = check(args.obs, obs, conv["rel_tol"], window)
     print(report.table())
     sys.exit(0 if report.converged else 2)
 
@@ -99,8 +103,8 @@ def main(argv: list[str] | None = None) -> None:
 
     p = sub.add_parser("check", help="test the convergence of an .obs file (fix ave/time)")
     p.add_argument("obs")
-    p.add_argument("--observables", help="comma-separated list (default: density,pe)")
-    p.add_argument("--window", type=float, default=0.5, help="final fraction of the series to use")
+    p.add_argument("--observables", help="comma-separated list (default: the run's flockit.yaml, else density,pe)")
+    p.add_argument("--window", type=float, help="final fraction of the series to use (default: the run's, else 0.5)")
     p.set_defaults(func=_cmd_check)
 
     p = sub.add_parser("analyze", help="conformation, adsorption and counterion condensation from the trajectory")
